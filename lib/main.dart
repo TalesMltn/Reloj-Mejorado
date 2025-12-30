@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:timezone/data/latest.dart' as tz;
 
+// NUEVOS IMPORTS PARA LA ALARMA PROFESIONAL
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+import 'package:just_audio/just_audio.dart';
+
 import 'screens/alarm_screen.dart';
 import 'screens/world_clock_screen.dart';
 import 'screens/stopwatch_screen.dart';
@@ -16,6 +20,9 @@ void main() async {
 
   // Inicializa zonas horarias
   tz.initializeTimeZones();
+
+  // Inicialización del nuevo sistema de alarma profesional
+  await AndroidAlarmManager.initialize();
 
   runApp(const MyApp());
 }
@@ -44,9 +51,8 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 1; // Empieza en Reloj Mundial (índice 1)
+  int _currentIndex = 1; // Empieza en Reloj Mundial
 
-  // Lista de pantallas (se crean una sola vez)
   static const List<Widget> _screens = [
     AlarmScreen(),
     WorldClockScreen(),
@@ -57,7 +63,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(  // ← CAMBIO CLAVE: IndexedStack en vez de PageView
+      body: IndexedStack(
         index: _currentIndex,
         children: _screens,
       ),
@@ -68,9 +74,7 @@ class _MainScreenState extends State<MainScreen> {
         ),
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
-          onTap: (index) {
-            setState(() => _currentIndex = index);
-          },
+          onTap: (index) => setState(() => _currentIndex = index),
           backgroundColor: Colors.transparent,
           selectedItemColor: Colors.cyanAccent,
           unselectedItemColor: Colors.grey,

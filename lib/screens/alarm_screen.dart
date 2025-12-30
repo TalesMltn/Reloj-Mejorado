@@ -1,5 +1,6 @@
 // lib/screens/alarm_screen.dart
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -8,7 +9,11 @@ import 'package:intl/intl.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
 
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
+
+import 'alarm_ringing_screen.dart';
 import '../widgets/bubble_animation.dart';
+import '../alarm_service.dart'; // ← Tu nuevo servicio de alarma
 
 class AlarmScreen extends StatefulWidget {
   const AlarmScreen({super.key});
@@ -24,10 +29,8 @@ class _AlarmScreenState extends State<AlarmScreen>
 
   VideoPlayerController? _videoController;
 
-  // Fondo fijo principal: fox_autumn_5.mp4
   static const String _mainBackground = 'assets/videos/fox_autumn_5.mp4';
 
-  // Fondos aleatorios que cambian cada 30 segundos
   final List<String> _randomBackgrounds = [
     'assets/videos/fox_autumn_1.mp4',
     'assets/videos/fox_autumn_2.mp4',
@@ -46,7 +49,6 @@ class _AlarmScreenState extends State<AlarmScreen>
   final Random _random = Random();
 
   static const String _limaZone = 'America/Lima';
-
   late tz.Location _limaLocation;
 
   @override
@@ -55,11 +57,9 @@ class _AlarmScreenState extends State<AlarmScreen>
     tz_data.initializeTimeZones();
     _limaLocation = tz.getLocation(_limaZone);
 
-    // Fondo inicial
     _currentBackground = _mainBackground;
     _loadBackground(_currentBackground);
 
-    // Cambio aleatorio cada 30 segundos
     _backgroundTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       final String newRandom = _randomBackgrounds[_random.nextInt(_randomBackgrounds.length)];
       if (newRandom != _currentBackground) {
@@ -68,7 +68,6 @@ class _AlarmScreenState extends State<AlarmScreen>
       }
     });
 
-    // Actualiza próxima alarma cada minuto
     _updateTimer = Timer.periodic(const Duration(minutes: 1), (_) => _updateNextAlarm());
     _updateNextAlarm();
   }
@@ -85,11 +84,10 @@ class _AlarmScreenState extends State<AlarmScreen>
             ..play();
         });
       }).catchError((error) {
-        debugPrint('Error cargando video $videoPath: $error');
+        debugPrint('Error cargando video: $error');
       });
   }
 
-  // CÁLCULO REAL DE PRÓXIMA ALARMA (igual que en TimerScreen)
   void _updateNextAlarm() {
     final now = tz.TZDateTime.now(_limaLocation);
     final activeAlarms = _alarms.where((a) => a['active'] == true).toList();
@@ -105,17 +103,12 @@ class _AlarmScreenState extends State<AlarmScreen>
     for (var alarm in activeAlarms) {
       final hour = alarm['hour'] as int;
       final minute = alarm['minute'] as int;
-      final repeatDaily = (alarm['repeatDays'] as List<bool>).every((d) => d); // "Diariamente"
 
       DateTime candidate = tz.TZDateTime(_limaLocation, now.year, now.month, now.day, hour, minute);
 
-      // Si la hora ya pasó hoy
       if (candidate.isBefore(now)) {
-        candidate = candidate.add(const Duration(days: 1)); // mañana
+        candidate = candidate.add(const Duration(days: 1));
       }
-
-      // Si es diaria, siempre es válida
-      // Si no es diaria, aquí podrías filtrar por día de la semana (opcional futuro)
 
       final duration = candidate.difference(now);
 
@@ -128,15 +121,12 @@ class _AlarmScreenState extends State<AlarmScreen>
     if (nearestAlarm != null && shortestDuration != null) {
       final hours = shortestDuration.inHours;
       final minutes = shortestDuration.inMinutes % 60;
-
-      String timeText = hours > 0 ? '$hours horas $minutes minutos' : '$minutes minutos';
-      String dateText = DateFormat('EEE. d MMM. h:mm a', 'es_ES').format(nearestAlarm).toLowerCase();
+      final timeText = hours > 0 ? '$hours horas $minutes minutos' : '$minutes minutos';
+      final dateText = DateFormat('EEE. d MMM. h:mm a', 'es_ES').format(nearestAlarm).toLowerCase();
 
       setState(() {
         _nextAlarmText = 'Alarma dentro de $timeText\n$dateText';
       });
-    } else {
-      setState(() => _nextAlarmText = '');
     }
   }
 
@@ -148,6 +138,7 @@ class _AlarmScreenState extends State<AlarmScreen>
           ? DateTime(2025, 1, 1, existingAlarm['hour'], existingAlarm['minute'])
           : DateTime.now(),
     );
+
     String label = existingAlarm?['label'] ?? '';
     List<bool> repeatDays = List.from(existingAlarm?['repeatDays'] ?? List.filled(7, false));
     String sound = existingAlarm?['sound'] ?? 'Aud1.mp3';
@@ -168,43 +159,30 @@ class _AlarmScreenState extends State<AlarmScreen>
           builder: (context, setSheetState) {
             return Column(
               children: [
-                // Barra superior mejorada
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Botón Cancelar (estilo secundario, como "Restablecer")
                       ElevatedButton(
                         onPressed: () => Navigator.pop(context),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.grey[800],
                           foregroundColor: Colors.orange,
                           side: const BorderSide(color: Colors.orange, width: 2),
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
-                          elevation: 8,
-                          shadowColor: Colors.orange.withOpacity(0.4),
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                          elevation: 6,
+                          shadowColor: Colors.orange.withOpacity(0.3),
                         ),
-                        child: const Text(
-                          'Cancelar',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
+                        child: const Text('Cancelar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
-
-                      // Título: "Nueva alarma" o "Editar alarma" - más suave con toque cyan
                       Text(
                         isEditing ? 'Editar alarma' : 'Nueva alarma',
-                        style: TextStyle(
-                          fontSize: 20,
-                          color: Colors.cyanAccent.withOpacity(0.7), // Opaco + toque cyan suave
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: TextStyle(fontSize: 20, color: Colors.cyanAccent.withOpacity(0.7), fontWeight: FontWeight.w500),
                       ),
-
-                      // Botón Guardar (estilo principal, como "Iniciar")
                       ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
                           final newAlarm = {
                             'time': selectedTime.format(context),
                             'hour': selectedTime.hour,
@@ -223,26 +201,52 @@ class _AlarmScreenState extends State<AlarmScreen>
                             setState(() => _alarms.add(newAlarm));
                           }
                           _updateNextAlarm();
+
+                          DateTime scheduledDate = DateTime(
+                            DateTime.now().year,
+                            DateTime.now().month,
+                            DateTime.now().day,
+                            selectedTime.hour,
+                            selectedTime.minute,
+                          );
+
+                          if (scheduledDate.isBefore(DateTime.now())) {
+                            scheduledDate = scheduledDate.add(const Duration(days: 1));
+                          }
+
+                          final int alarmId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+                          await AndroidAlarmManager.oneShotAt(
+                            scheduledDate,
+                            alarmId,
+                            alarmCallback,
+                            exact: true,
+                            wakeup: true,
+                            alarmClock: true,
+                            allowWhileIdle: true,
+                            rescheduleOnReboot: true,
+                            params: {
+                              'sound': sound,
+                              'label': label,
+                            },
+                          );
+
                           Navigator.pop(context);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.cyanAccent,
                           foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
-                          elevation: 12,
-                          shadowColor: Colors.cyanAccent.withOpacity(0.8),
+                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                          elevation: 8,
+                          shadowColor: Colors.cyanAccent.withOpacity(0.7),
                         ),
-                        child: const Text(
-                          'Guardar',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
+                        child: const Text('Guardar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
                 ),
 
-                // Resto del formulario (sin cambios)
                 Expanded(
                   flex: 2,
                   child: Center(
@@ -251,19 +255,15 @@ class _AlarmScreenState extends State<AlarmScreen>
                         final picked = await showTimePicker(
                           context: context,
                           initialTime: selectedTime,
-                          builder: (context, child) {
-                            return Theme(
-                              data: ThemeData.dark().copyWith(
-                                primaryColor: Colors.cyanAccent,
-                                colorScheme: const ColorScheme.dark(primary: Colors.cyanAccent),
-                              ),
-                              child: child!,
-                            );
-                          },
+                          builder: (context, child) => Theme(
+                            data: ThemeData.dark().copyWith(
+                              primaryColor: Colors.cyanAccent,
+                              colorScheme: const ColorScheme.dark(primary: Colors.cyanAccent),
+                            ),
+                            child: child!,
+                          ),
                         );
-                        if (picked != null) {
-                          setSheetState(() => selectedTime = picked);
-                        }
+                        if (picked != null) setSheetState(() => selectedTime = picked);
                       },
                       child: Text(
                         selectedTime.format(context),
@@ -410,7 +410,6 @@ class _AlarmScreenState extends State<AlarmScreen>
       body: Stack(
         children: [
           Container(color: Colors.black),
-
           if (_videoController != null && _videoController!.value.isInitialized)
             SizedBox.expand(
               child: FittedBox(
@@ -422,34 +421,20 @@ class _AlarmScreenState extends State<AlarmScreen>
                 ),
               ),
             ),
-
           Container(color: Colors.black.withOpacity(0.5)),
-
           ...List.generate(80, (_) => const BubbleAnimation()),
-
           SafeArea(
             child: Column(
               children: [
                 if (_nextAlarmText.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 60),
-                    child: Text(
-                      _nextAlarmText,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 24, color: Colors.white70, height: 1.5),
-                    ),
+                    child: Text(_nextAlarmText, textAlign: TextAlign.center, style: const TextStyle(fontSize: 24, color: Colors.white70, height: 1.5)),
                   ),
-
                 const SizedBox(height: 20),
-
                 Expanded(
                   child: _alarms.isEmpty
-                      ? const Center(
-                    child: Text(
-                      'No hay alarmas configuradas',
-                      style: TextStyle(fontSize: 22, color: Colors.white60),
-                    ),
-                  )
+                      ? const Center(child: Text('No hay alarmas configuradas', style: TextStyle(fontSize: 22, color: Colors.white60)))
                       : ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     itemCount: _alarms.length,
@@ -461,13 +446,8 @@ class _AlarmScreenState extends State<AlarmScreen>
                         margin: const EdgeInsets.symmetric(vertical: 8),
                         child: ListTile(
                           contentPadding: const EdgeInsets.all(20),
-                          title: Text(
-                            alarm['time'],
-                            style: const TextStyle(fontSize: 48, color: Colors.white, fontWeight: FontWeight.w300),
-                          ),
-                          subtitle: alarm['label'].isNotEmpty
-                              ? Text(alarm['label'], style: const TextStyle(color: Colors.orange, fontSize: 18))
-                              : null,
+                          title: Text(alarm['time'], style: const TextStyle(fontSize: 48, color: Colors.white, fontWeight: FontWeight.w300)),
+                          subtitle: alarm['label'].isNotEmpty ? Text(alarm['label'], style: const TextStyle(color: Colors.orange, fontSize: 18)) : null,
                           trailing: Switch(
                             value: alarm['active'],
                             onChanged: (val) {
@@ -485,7 +465,6 @@ class _AlarmScreenState extends State<AlarmScreen>
               ],
             ),
           ),
-
           Positioned(
             bottom: 100,
             right: 30,
@@ -496,6 +475,40 @@ class _AlarmScreenState extends State<AlarmScreen>
               onPressed: () => _showAddAlarmDialog(),
             ),
           ),
+          // Botón de prueba (temporal)
+         /* Positioned(
+            bottom: 180,
+            right: 30,
+            child: FloatingActionButton(
+              backgroundColor: Colors.redAccent,
+              child: const Icon(Icons.volume_up),
+              onPressed: () async {
+                final String testPayload = jsonEncode({
+                  'sound': 'Aud5.mp3',
+                  'label': '¡Prueba de alarma!',
+                });
+
+                await AndroidAlarmManager.oneShot(
+                  const Duration(seconds: 15),
+                  999,
+                  alarmCallback,
+                  exact: true,
+                  wakeup: true,
+                  alarmClock: true,
+                  allowWhileIdle: true,
+                  rescheduleOnReboot: true,
+                  params: {
+                    'sound': 'assets/sounds/Aud5.mp3',
+                    'label': '¡Prueba de alarma!',
+                  },
+                );
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Prueba: alarma en 15 segundos')),
+                );
+              },
+            ),
+          ),*/
         ],
       ),
     );

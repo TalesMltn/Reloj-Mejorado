@@ -10,9 +10,16 @@ import 'package:timezone/data/latest.dart' as tz_data;
 import '../widgets/bubble_animation.dart';
 
 class AlarmRingingScreen extends StatefulWidget {
-  final String alarmLabel; // Nombre de la alarma (ej: "Despertar para el día")
+  final String alarmLabel;
+  final VoidCallback onStop;   // Función para detener la alarma y el sonido
+  final VoidCallback onSnooze; // Función para aplazar 5 minutos
 
-  const AlarmRingingScreen({super.key, required this.alarmLabel});
+  const AlarmRingingScreen({
+    super.key,
+    required this.alarmLabel,
+    required this.onStop,
+    required this.onSnooze,
+  });
 
   @override
   State<AlarmRingingScreen> createState() => _AlarmRingingScreenState();
@@ -63,17 +70,6 @@ class _AlarmRingingScreenState extends State<AlarmRingingScreen> {
       _currentTime = timeStr;
       _currentPeriod = period;
     });
-  }
-
-  void _snooze() {
-    // Aquí pondrás la lógica real de aplazar (ej: reprogramar en 5 min)
-    Navigator.pop(context);
-    // Por ahora solo cierra
-  }
-
-  void _stopAlarm() {
-    // Aquí detendrás el sonido real y volverás a la pantalla principal
-    Navigator.pop(context);
   }
 
   @override
@@ -169,7 +165,7 @@ class _AlarmRingingScreenState extends State<AlarmRingingScreen> {
                       // Botón Aplazar (estilo secundario)
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: _snooze,
+                          onPressed: widget.onSnooze,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.grey[800],
                             foregroundColor: Colors.orange,
@@ -182,7 +178,7 @@ class _AlarmRingingScreenState extends State<AlarmRingingScreen> {
                             shadowColor: Colors.orange.withOpacity(0.5),
                           ),
                           child: const Text(
-                            'Aplazar',
+                            'Aplazar 5 min',
                             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -193,7 +189,7 @@ class _AlarmRingingScreenState extends State<AlarmRingingScreen> {
                       // Botón Detener (estilo principal cyan neon)
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: _stopAlarm,
+                          onPressed: widget.onStop,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.cyanAccent,
                             foregroundColor: Colors.black,

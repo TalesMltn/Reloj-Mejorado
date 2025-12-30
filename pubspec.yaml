@@ -26,22 +26,32 @@ dependencies:
   # Guardado permanente de ciudades y preferencias
   shared_preferences: ^2.3.0
 
-  # Paquetes opcionales futuros para alarma con sonido y notificaciones
-  # alarm: ^3.2.0
-  # just_audio: ^0.9.39
-  # flutter_local_notifications: ^17.2.3
-  # permission_handler: ^11.3.1
+  # NUEVOS PAQUETES PARA ALARMA PROFESIONAL (versiones actuales 2025)
+  android_alarm_manager_plus: ^4.0.3
+  just_audio: ^0.9.39
+  workmanager: ^0.9.0+3  # ← Versión correcta y actual
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
 
+  # Herramienta para generar íconos automáticamente
+  flutter_launcher_icons: ^0.14.4  # ← Versión más reciente (2025)
+
 flutter:
   uses-material-design: true
 
   assets:
     - assets/html/index.html
-    - assets/videos/          # Incluye todos los videos: fox_autumn_1.mp4 a fox_autumn_7.mp4
-    - assets/images/          # ← Aquí van bnita1.jpg, bnita2.jpg y bnita3.jpg
+    - assets/videos/
+    - assets/images/
     - assets/sounds/
+    - assets/icon/icon.png  # ← Asegúrate de tener esta imagen (1024x1024)
+
+# Configuración para generar íconos de launcher (Android + iOS)
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon/icon.png"
+  min_sdk_android: 21
