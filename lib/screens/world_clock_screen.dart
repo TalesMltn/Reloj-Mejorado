@@ -3,7 +3,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:intl/intl.dart';
@@ -22,21 +21,10 @@ class _WorldClockScreenState extends State<WorldClockScreen>
     with AutomaticKeepAliveClientMixin {
 
   @override
-  bool get wantKeepAlive => true;  // ← Mantiene viva la pantalla
+  bool get wantKeepAlive => true;
 
-  VideoPlayerController? _videoController;
-
-  final List<String> _localFondos = [
-    'assets/videos/🦊🍂1.mp4',
-    'assets/videos/🦊🍂2.mp4',
-    'assets/videos/🦊🍂3.mp4',
-    'assets/videos/🦊🍂4.mp4',
-    'assets/videos/🦊🍂5.mp4',
-    'assets/videos/🦊🍂6.mp4',
-    'assets/videos/🦊🍂7.mp4',
-  ];
-
-  int _currentFondoIndex = 0;
+  // Ya no necesitamos VideoPlayerController ni lista de fondos de video
+  // Usamos directamente bnita3.jpg como fondo fijo
 
   late final List<String> _allZones;
   String _searchQuery = '';
@@ -57,13 +45,11 @@ class _WorldClockScreenState extends State<WorldClockScreen>
     tz_data.initializeTimeZones();
     _allZones = tz.timeZoneDatabase.locations.keys.toList()..sort();
 
-    _loadBackground(_currentFondoIndex);
     _loadCitiesFromPreferences();
     _updateMainTime();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateMainTime());
   }
 
-  // Cargar ciudades guardadas
   Future<void> _loadCitiesFromPreferences() async {
     _prefs = await SharedPreferences.getInstance();
     final String? citiesJson = _prefs.getString('added_cities');
@@ -77,29 +63,16 @@ class _WorldClockScreenState extends State<WorldClockScreen>
         }).toList();
       });
     }
-    // Si por algún motivo está vacío, aseguramos tener al menos Lima
+
     if (_addedCities.isEmpty) {
       _addedCities = [{'name': 'Lima', 'zone': 'America/Lima'}];
       await _saveCitiesToPreferences();
     }
   }
 
-  // Guardar ciudades cada vez que cambien
   Future<void> _saveCitiesToPreferences() async {
     final String citiesJson = jsonEncode(_addedCities);
     await _prefs.setString('added_cities', citiesJson);
-  }
-
-  void _loadBackground(int index) {
-    _videoController?.dispose();
-    _videoController = VideoPlayerController.asset(_localFondos[index])
-      ..initialize().then((_) {
-        if (!mounted) return;
-        _videoController!.play();
-        _videoController!.setLooping(true);
-        _videoController!.setVolume(0);
-        setState(() {});
-      });
   }
 
   void _updateMainTime() {
@@ -197,7 +170,7 @@ class _WorldClockScreenState extends State<WorldClockScreen>
                                   _addedCities.add({'name': name, 'zone': zone});
                                 }
                               });
-                              await _saveCitiesToPreferences();  // Guardar inmediatamente
+                              await _saveCitiesToPreferences();
                               setModalState(() {});
                             },
                           );
@@ -217,30 +190,32 @@ class _WorldClockScreenState extends State<WorldClockScreen>
   @override
   void dispose() {
     _timer?.cancel();
-    _videoController?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);  // ← REQUERIDO por KeepAlive
+    super.build(context);
 
     return Stack(
       children: [
-        Container(color: Colors.black),
-        if (_videoController != null && _videoController!.value.isInitialized)
-          SizedBox.expand(
-            child: FittedBox(
+        // Fondo con bnita3.jpg
+        Container(
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/images/bnita3.jpg'),  // ← Tu imagen aquí
               fit: BoxFit.cover,
-              child: SizedBox(
-                width: _videoController!.value.size.width,
-                height: _videoController!.value.size.height,
-                child: VideoPlayer(_videoController!),
-              ),
             ),
           ),
-        Container(color: Colors.black.withOpacity(0.6)),
+        ),
+
+        // Capa oscura para mejorar legibilidad del texto
+        Container(color: Colors.black.withOpacity(0.55)),
+
+        // Burbujas animadas
         ...List.generate(120, (_) => const BubbleAnimation()),
+
+        // Contenido principal
         SafeArea(
           child: Column(
             children: [
@@ -251,7 +226,7 @@ class _WorldClockScreenState extends State<WorldClockScreen>
                     Text(
                       _mainTime,
                       style: TextStyle(
-                        fontSize: 100,
+                        fontSize: 90,
                         fontWeight: FontWeight.bold,
                         color: Colors.cyanAccent,
                         shadows: const [
@@ -305,13 +280,13 @@ class _WorldClockScreenState extends State<WorldClockScreen>
                         children: [
                           Text(
                             city['name']!,
-                            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w600),
+                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
                           ),
                           Row(
                             children: [
                               Text(
                                 cityTime,
-                                style: const TextStyle(fontSize: 28),
+                                style: const TextStyle(fontSize: 24),
                               ),
                               const SizedBox(width: 10),
                               IconButton(
@@ -320,7 +295,7 @@ class _WorldClockScreenState extends State<WorldClockScreen>
                                   setState(() {
                                     _addedCities.removeAt(index);
                                   });
-                                  await _saveCitiesToPreferences();  // Guardar al eliminar
+                                  await _saveCitiesToPreferences();
                                 },
                               ),
                             ],

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
 import 'package:intl/intl.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
@@ -18,32 +17,16 @@ class TimerScreen extends StatefulWidget {
 }
 
 class _TimerScreenState extends State<TimerScreen>
-    with TickerProviderStateMixin, AutomaticKeepAliveClientMixin {  // ← KEEPALIVE AÑADIDO
+    with TickerProviderStateMixin, AutomaticKeepAliveClientMixin {
 
   @override
-  bool get wantKeepAlive => true;  // ← MANTIENE EL ESTADO AL CAMBIAR DE PESTAÑA
-
-  VideoPlayerController? _videoController;
-
-  final List<String> _localFondos = [
-    'assets/videos/🦊🍂1.mp4',
-    'assets/videos/🦊🍂2.mp4',
-    'assets/videos/🦊🍂3.mp4',
-    'assets/videos/🦊🍂4.mp4',
-    'assets/videos/🦊🍂5.mp4',
-    'assets/videos/🦊🍂6.mp4',
-    'assets/videos/🦊🍂7.mp4',
-  ];
-
-  int _currentFondoIndex = 0;
+  bool get wantKeepAlive => true;
 
   int _hours = 0;
   int _minutes = 0;
   int _seconds = 0;
-
   Duration _initialDuration = Duration.zero;
   Duration _remaining = Duration.zero;
-
   Timer? _timer;
   bool _isRunning = false;
 
@@ -56,24 +39,11 @@ class _TimerScreenState extends State<TimerScreen>
   void initState() {
     super.initState();
     tz_data.initializeTimeZones();
-    _loadBackground(_currentFondoIndex);
 
     _circleController = AnimationController(vsync: this);
     _circleAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _circleController, curve: Curves.linear),
     );
-  }
-
-  void _loadBackground(int index) {
-    _videoController?.dispose();
-    _videoController = VideoPlayerController.asset(_localFondos[index])
-      ..initialize().then((_) {
-        if (!mounted) return;
-        _videoController!.play();
-        _videoController!.setLooping(true);
-        _videoController!.setVolume(0);
-        setState(() {});
-      });
   }
 
   void _updateRemaining() {
@@ -85,7 +55,6 @@ class _TimerScreenState extends State<TimerScreen>
 
   void _startTimer() {
     if (_remaining.inSeconds == 0) return;
-
     _isRunning = true;
     _circleController.duration = _remaining;
     _circleController.forward(from: 0.0);
@@ -117,12 +86,10 @@ class _TimerScreenState extends State<TimerScreen>
     _timer?.cancel();
     _circleController.stop();
     _circleController.reset();
-
     setState(() {
       _isRunning = false;
       _remaining = Duration.zero;
     });
-
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -137,9 +104,7 @@ class _TimerScreenState extends State<TimerScreen>
     _timer?.cancel();
     _circleController.reset();
     setState(() {
-      _hours = 0;
-      _minutes = 0;
-      _seconds = 0;
+      _hours = _minutes = _seconds = 0;
       _remaining = Duration.zero;
       _initialDuration = Duration.zero;
       _isRunning = false;
@@ -152,20 +117,19 @@ class _TimerScreenState extends State<TimerScreen>
   }
 
   String _getEndTimeText() {
-    if (_remaining.inSeconds == 0) {
-      return 'Configura el tiempo';
-    }
-
+    if (_remaining.inSeconds == 0) return 'Configura el tiempo';
     final DateTime endTime = _nowInLima.add(_remaining);
-    return 'Termina a las ${DateFormat('h:mm a', 'es_ES').format(endTime).toLowerCase()}';
+    return DateFormat('h:mm', 'es_ES').format(endTime);
+  }
+
+  String _getPeriodText() {
+    if (_remaining.inSeconds == 0) return '';
+    final DateTime endTime = _nowInLima.add(_remaining);
+    return DateFormat('a', 'es_ES').format(endTime).toLowerCase();
   }
 
   Future<void> _showNumberPicker(String type) async {
-    int initial = type == 'hours'
-        ? _hours
-        : type == 'minutes'
-        ? _minutes
-        : _seconds;
+    int initial = type == 'hours' ? _hours : type == 'minutes' ? _minutes : _seconds;
     int max = type == 'hours' ? 99 : 59;
 
     final result = await showModalBottomSheet<int>(
@@ -191,7 +155,6 @@ class _TimerScreenState extends State<TimerScreen>
   void dispose() {
     _timer?.cancel();
     _circleController.dispose();
-    _videoController?.dispose();
     super.dispose();
   }
 
@@ -204,26 +167,29 @@ class _TimerScreenState extends State<TimerScreen>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);  // ← REQUERIDO POR KeepAlive
+    super.build(context);
 
     final isSetupMode = _remaining.inSeconds == 0 || !_isRunning;
 
     return Stack(
       children: [
-        Container(color: Colors.black),
-        if (_videoController != null && _videoController!.value.isInitialized)
-          SizedBox.expand(
-            child: FittedBox(
+        // Fondo estático con bnita1.jpg
+        Container(
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/images/bnita1.jpg'),  // ← Tu imagen aquí
               fit: BoxFit.cover,
-              child: SizedBox(
-                width: _videoController!.value.size.width,
-                height: _videoController!.value.size.height,
-                child: VideoPlayer(_videoController!),
-              ),
             ),
           ),
+        ),
+
+        // Capa oscura para mejor legibilidad del texto
         Container(color: Colors.black.withOpacity(0.55)),
-        ...List.generate(100, (_) => const BubbleAnimation()),
+
+        // Burbujas animadas
+        ...List.generate(80, (_) => const BubbleAnimation()),
+
+        // Contenido principal
         SafeArea(
           child: Column(
             children: [
@@ -242,19 +208,28 @@ class _TimerScreenState extends State<TimerScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     GestureDetector(
-                        onTap: () => _showNumberPicker('hours'),
-                        child: Text(_hours.toString().padLeft(2, '0'),
-                            style: const TextStyle(fontSize: 78, color: Colors.white70))),
+                      onTap: () => _showNumberPicker('hours'),
+                      child: Text(
+                        _hours.toString().padLeft(2, '0'),
+                        style: const TextStyle(fontSize: 78, color: Colors.white70),
+                      ),
+                    ),
                     const Text(':', style: TextStyle(fontSize: 78, color: Colors.white70)),
                     GestureDetector(
-                        onTap: () => _showNumberPicker('minutes'),
-                        child: Text(_minutes.toString().padLeft(2, '0'),
-                            style: const TextStyle(fontSize: 78, color: Colors.white70))),
+                      onTap: () => _showNumberPicker('minutes'),
+                      child: Text(
+                        _minutes.toString().padLeft(2, '0'),
+                        style: const TextStyle(fontSize: 78, color: Colors.white70),
+                      ),
+                    ),
                     const Text(':', style: TextStyle(fontSize: 78, color: Colors.white70)),
                     GestureDetector(
-                        onTap: () => _showNumberPicker('seconds'),
-                        child: Text(_seconds.toString().padLeft(2, '0'),
-                            style: const TextStyle(fontSize: 78, color: Colors.white70))),
+                      onTap: () => _showNumberPicker('seconds'),
+                      child: Text(
+                        _seconds.toString().padLeft(2, '0'),
+                        style: const TextStyle(fontSize: 78, color: Colors.white70),
+                      ),
+                    ),
                   ],
                 ),
                 const Spacer(),
@@ -262,13 +237,14 @@ class _TimerScreenState extends State<TimerScreen>
                   width: 180,
                   height: 180,
                   decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white24, width: 2)),
+                    color: Colors.white.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white24, width: 2),
+                  ),
                   child: Center(
                     child: Text(
                       _formatTime(_remaining),
-                      style: const TextStyle(fontSize: 28, color: Colors.white70),
+                      style: const TextStyle(fontSize: 32, color: Colors.white70),
                     ),
                   ),
                 ),
@@ -283,8 +259,7 @@ class _TimerScreenState extends State<TimerScreen>
                     elevation: 20,
                     shadowColor: Colors.cyanAccent.withOpacity(0.8),
                   ),
-                  child: const Text('Iniciar',
-                      style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+                  child: const Text('Iniciar', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(height: 70),
               ] else ...[
@@ -309,28 +284,32 @@ class _TimerScreenState extends State<TimerScreen>
                         children: [
                           Text(
                             _formatTime(_remaining),
-                            style: TextStyle(
-                              fontSize: 72,
+                            style: const TextStyle(
+                              fontSize: 64,
                               fontWeight: FontWeight.bold,
                               color: Colors.cyanAccent,
-                              shadows: const [
+                              shadows: [
                                 Shadow(color: Colors.cyanAccent, blurRadius: 30),
                                 Shadow(color: Colors.cyanAccent, blurRadius: 60),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 20),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.access_time, color: Colors.cyanAccent, size: 28),
-                              const SizedBox(width: 12),
-                              Text(
-                                _getEndTimeText(),
-                                style: const TextStyle(
-                                    fontSize: 24, color: Colors.cyanAccent, fontWeight: FontWeight.w500),
-                              ),
-                            ],
+                          const SizedBox(height: 16),
+                          Text(
+                            'Termina: ${_getEndTimeText()}',
+                            style: const TextStyle(
+                              fontSize: 26,
+                              color: Colors.cyanAccent,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Text(
+                            _getPeriodText(),
+                            style: const TextStyle(
+                              fontSize: 20,
+                              color: Colors.cyanAccent,
+                              fontWeight: FontWeight.w400,
+                            ),
                           ),
                         ],
                       ),
@@ -354,8 +333,7 @@ class _TimerScreenState extends State<TimerScreen>
                               borderRadius: BorderRadius.horizontal(left: Radius.circular(50)),
                             ),
                           ),
-                          child: const Text('Cancelar',
-                              style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold)),
+                          child: const Text('Cancelar', style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold)),
                         ),
                       ),
                       Expanded(
@@ -390,6 +368,10 @@ class _TimerScreenState extends State<TimerScreen>
   }
 }
 
+// ========================================
+// CLASES AUXILIARES (sin cambios)
+// ========================================
+
 class CircleProgressPainter extends CustomPainter {
   final double progress;
 
@@ -408,8 +390,9 @@ class CircleProgressPainter extends CustomPainter {
     canvas.drawCircle(center, radius, bgPaint);
 
     final progressPaint = Paint()
-      ..shader = const LinearGradient(colors: [Colors.amber, Colors.yellowAccent])
-          .createShader(Rect.fromCircle(center: center, radius: radius))
+      ..shader = const LinearGradient(
+        colors: [Colors.amber, Colors.yellowAccent],
+      ).createShader(Rect.fromCircle(center: center, radius: radius))
       ..strokeWidth = 24
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
@@ -432,7 +415,12 @@ class NumberPickerSheet extends StatefulWidget {
   final int max;
   final String title;
 
-  const NumberPickerSheet({required this.initial, required this.max, required this.title, super.key});
+  const NumberPickerSheet({
+    required this.initial,
+    required this.max,
+    required this.title,
+    super.key,
+  });
 
   @override
   State<NumberPickerSheet> createState() => _NumberPickerSheetState();
@@ -458,7 +446,10 @@ class _NumberPickerSheetState extends State<NumberPickerSheet> {
         children: [
           Padding(
             padding: const EdgeInsets.all(20),
-            child: Text(widget.title, style: const TextStyle(fontSize: 20, color: Colors.white)),
+            child: Text(
+              widget.title,
+              style: const TextStyle(fontSize: 20, color: Colors.white),
+            ),
           ),
           Expanded(
             child: ListWheelScrollView.useDelegate(
@@ -489,11 +480,13 @@ class _NumberPickerSheetState extends State<NumberPickerSheet> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancelar', style: TextStyle(color: Colors.orange, fontSize: 18))),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancelar', style: TextStyle(color: Colors.orange, fontSize: 18)),
+                ),
                 TextButton(
-                    onPressed: () => Navigator.pop(context, _current),
-                    child: const Text('Aceptar', style: TextStyle(color: Colors.cyanAccent, fontSize: 18))),
+                  onPressed: () => Navigator.pop(context, _current),
+                  child: const Text('Aceptar', style: TextStyle(color: Colors.cyanAccent, fontSize: 18)),
+                ),
               ],
             ),
           ),

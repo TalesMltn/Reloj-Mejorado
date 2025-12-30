@@ -14,17 +14,22 @@ dependencies:
   video_player: ^2.8.7
   chewie: ^1.7.5
 
-  # Para efectos avanzados con HTML (si lo usas para burbujas o partículas)
+  # Para efectos avanzados con HTML (burbujas/partículas si lo usas)
   webview_flutter: ^4.9.0
+
+  # Formato de fecha/hora en español
   intl: ^0.19.0
+
+  # Zonas horarias para Reloj Mundial
   timezone: ^0.9.2
+
+  # Guardado permanente de ciudades y preferencias
   shared_preferences: ^2.3.0
 
-  # Paquetes recomendados para un despertador real (puedes agregarlos después)
+  # Paquetes opcionales futuros para alarma con sonido y notificaciones
   # alarm: ^3.2.0
   # just_audio: ^0.9.39
   # flutter_local_notifications: ^17.2.3
-  # shared_preferences: ^2.3.2
   # permission_handler: ^11.3.1
 
 dev_dependencies:
@@ -35,14 +40,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # Assets: HTML y TODA la carpeta videos con tus nombres originales
   assets:
     - assets/html/index.html
-    - assets/videos/   # ← Esto incluye automáticamente:
-      # fox_autumn_1.mp4
-      # fox_autumn_2.mp4
-      # fox_autumn_3.mp4
-      # fox_autumn_4.mp4
-      # fox_autumn_5.mp4
-      # fox_autumn_6.mp4
-      # fox_autumn_7.mp4
+    - assets/videos/          # Incluye todos los videos: fox_autumn_1.mp4 a fox_autumn_7.mp4
+    - assets/images/          # ← Aquí van bnita1.jpg, bnita2.jpg y bnita3.jpg

@@ -1,7 +1,8 @@
 // lib/screens/stopwatch_screen.dart
 import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
+
 import '../widgets/bubble_animation.dart';
 
 class StopwatchScreen extends StatefulWidget {
@@ -12,24 +13,10 @@ class StopwatchScreen extends StatefulWidget {
 }
 
 class _StopwatchScreenState extends State<StopwatchScreen>
-    with AutomaticKeepAliveClientMixin {  // ← AÑADIDO
+    with AutomaticKeepAliveClientMixin {
 
   @override
-  bool get wantKeepAlive => true;  // ← MANTIENE EL ESTADO VIVO
-
-  VideoPlayerController? _videoController;
-
-  final List<String> _localFondos = [
-    'assets/videos/🦊🍂1.mp4',
-    'assets/videos/🦊🍂2.mp4',
-    'assets/videos/🦊🍂3.mp4',
-    'assets/videos/🦊🍂4.mp4',
-    'assets/videos/🦊🍂5.mp4',
-    'assets/videos/🦊🍂6.mp4',
-    'assets/videos/🦊🍂7.mp4',
-  ];
-
-  int _currentFondoIndex = 0;
+  bool get wantKeepAlive => true;
 
   final Stopwatch _stopwatch = Stopwatch();
   Timer? _timer;
@@ -42,19 +29,7 @@ class _StopwatchScreenState extends State<StopwatchScreen>
   @override
   void initState() {
     super.initState();
-    _loadBackground(_currentFondoIndex);
-  }
-
-  void _loadBackground(int index) {
-    _videoController?.dispose();
-    _videoController = VideoPlayerController.asset(_localFondos[index])
-      ..initialize().then((_) {
-        if (!mounted) return;
-        _videoController!.play();
-        _videoController!.setLooping(true);
-        _videoController!.setVolume(0);
-        setState(() {});
-      });
+    // Ya no cargamos video → fondo es imagen estática
   }
 
   void _updateTime() {
@@ -111,34 +86,38 @@ class _StopwatchScreenState extends State<StopwatchScreen>
   @override
   void dispose() {
     _timer?.cancel();
-    _videoController?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);  // ← REQUERIDO por AutomaticKeepAliveClientMixin
+    super.build(context); // Requerido por AutomaticKeepAliveClientMixin
 
     return Stack(
       children: [
-        Container(color: Colors.black),
-        if (_videoController != null && _videoController!.value.isInitialized)
-          SizedBox.expand(
-            child: FittedBox(
+        // Fondo estático con bnita2.jpg
+        Container(
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/images/bnita2.jpg'),  // ← Tu imagen aquí
               fit: BoxFit.cover,
-              child: SizedBox(
-                width: _videoController!.value.size.width,
-                height: _videoController!.value.size.height,
-                child: VideoPlayer(_videoController!),
-              ),
             ),
           ),
+        ),
+
+        // Capa oscura para mejor legibilidad
         Container(color: Colors.black.withOpacity(0.5)),
+
+        // Burbujas animadas
         ...List.generate(120, (_) => const BubbleAnimation()),
+
+        // Contenido principal
         SafeArea(
           child: Column(
             children: [
               const SizedBox(height: 100),
+
+              // Tiempo principal grande
               Text(
                 _mainTime,
                 style: const TextStyle(
@@ -151,7 +130,10 @@ class _StopwatchScreenState extends State<StopwatchScreen>
                   ],
                 ),
               ),
+
               const SizedBox(height: 40),
+
+              // Lista de vueltas (indicadores)
               if (_laps.isNotEmpty)
                 Expanded(
                   child: Container(
@@ -167,7 +149,7 @@ class _StopwatchScreenState extends State<StopwatchScreen>
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: const [
-                            Text('Vuelta', style: TextStyle(fontSize: 16, color: Colors.white70)),
+                            Text('Indicador', style: TextStyle(fontSize: 16, color: Colors.white70)),
                             Text('Tiempos parciales', style: TextStyle(fontSize: 16, color: Colors.white70)),
                             Text('Tiempo total', style: TextStyle(fontSize: 16, color: Colors.white70)),
                           ],
@@ -196,7 +178,10 @@ class _StopwatchScreenState extends State<StopwatchScreen>
                     ),
                   ),
                 ),
+
               const SizedBox(height: 60),
+
+              // Botones
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -212,7 +197,7 @@ class _StopwatchScreenState extends State<StopwatchScreen>
                       shadowColor: Colors.cyanAccent.withOpacity(0.5),
                     ),
                     child: Text(
-                      _isRunning ? 'Vuelta' : 'Restablecer',
+                      _isRunning ? 'Indicador' : 'Restablecer',
                       style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -234,6 +219,7 @@ class _StopwatchScreenState extends State<StopwatchScreen>
                   ),
                 ],
               ),
+
               const SizedBox(height: 100),
             ],
           ),
