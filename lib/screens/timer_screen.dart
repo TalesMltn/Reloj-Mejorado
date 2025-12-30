@@ -1,5 +1,4 @@
 // lib/screens/timer_screen.dart
-
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -18,7 +17,12 @@ class TimerScreen extends StatefulWidget {
   State<TimerScreen> createState() => _TimerScreenState();
 }
 
-class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin {
+class _TimerScreenState extends State<TimerScreen>
+    with TickerProviderStateMixin, AutomaticKeepAliveClientMixin {  // ← KEEPALIVE AÑADIDO
+
+  @override
+  bool get wantKeepAlive => true;  // ← MANTIENE EL ESTADO AL CAMBIAR DE PESTAÑA
+
   VideoPlayerController? _videoController;
 
   final List<String> _localFondos = [
@@ -46,16 +50,12 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
   late AnimationController _circleController;
   late Animation<double> _circleAnimation;
 
-  // Zona horaria fija de Lima (Perú)
   static const String _limaZone = 'America/Lima';
 
   @override
   void initState() {
     super.initState();
-
-    // Inicializamos la base de datos de zonas horarias (igual que en WorldClockScreen)
     tz_data.initializeTimeZones();
-
     _loadBackground(_currentFondoIndex);
 
     _circleController = AnimationController(vsync: this);
@@ -146,13 +146,11 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
     });
   }
 
-  /// Hora actual en Lima usando la misma lógica que WorldClockScreen
   DateTime get _nowInLima {
     final location = tz.getLocation(_limaZone);
     return tz.TZDateTime.now(location);
   }
 
-  /// Calcula y formatea la hora de finalización del temporizador
   String _getEndTimeText() {
     if (_remaining.inSeconds == 0) {
       return 'Configura el tiempo';
@@ -206,6 +204,8 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);  // ← REQUERIDO POR KeepAlive
+
     final isSetupMode = _remaining.inSeconds == 0 || !_isRunning;
 
     return Stack(

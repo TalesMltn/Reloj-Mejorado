@@ -11,7 +11,12 @@ class StopwatchScreen extends StatefulWidget {
   State<StopwatchScreen> createState() => _StopwatchScreenState();
 }
 
-class _StopwatchScreenState extends State<StopwatchScreen> {
+class _StopwatchScreenState extends State<StopwatchScreen>
+    with AutomaticKeepAliveClientMixin {  // ← AÑADIDO
+
+  @override
+  bool get wantKeepAlive => true;  // ← MANTIENE EL ESTADO VIVO
+
   VideoPlayerController? _videoController;
 
   final List<String> _localFondos = [
@@ -44,10 +49,11 @@ class _StopwatchScreenState extends State<StopwatchScreen> {
     _videoController?.dispose();
     _videoController = VideoPlayerController.asset(_localFondos[index])
       ..initialize().then((_) {
+        if (!mounted) return;
         _videoController!.play();
         _videoController!.setLooping(true);
         _videoController!.setVolume(0);
-        if (mounted) setState(() {});
+        setState(() {});
       });
   }
 
@@ -111,6 +117,8 @@ class _StopwatchScreenState extends State<StopwatchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);  // ← REQUERIDO por AutomaticKeepAliveClientMixin
+
     return Stack(
       children: [
         Container(color: Colors.black),
@@ -127,13 +135,10 @@ class _StopwatchScreenState extends State<StopwatchScreen> {
           ),
         Container(color: Colors.black.withOpacity(0.5)),
         ...List.generate(120, (_) => const BubbleAnimation()),
-
         SafeArea(
           child: Column(
             children: [
               const SizedBox(height: 100),
-
-              // Tiempo principal grande
               Text(
                 _mainTime,
                 style: const TextStyle(
@@ -146,10 +151,7 @@ class _StopwatchScreenState extends State<StopwatchScreen> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 40),
-
-              // Lista de vueltas
               if (_laps.isNotEmpty)
                 Expanded(
                   child: Container(
@@ -194,14 +196,10 @@ class _StopwatchScreenState extends State<StopwatchScreen> {
                     ),
                   ),
                 ),
-
               const SizedBox(height: 60),
-
-              // Botones con estilo cyan neon
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Botón izquierdo: Vuelta / Restablecer
                   ElevatedButton(
                     onPressed: _isRunning ? _addLap : _resetStopwatch,
                     style: ElevatedButton.styleFrom(
@@ -219,7 +217,6 @@ class _StopwatchScreenState extends State<StopwatchScreen> {
                     ),
                   ),
                   const SizedBox(width: 40),
-                  // Botón derecho: Iniciar / Pausar (cyan neon brillante)
                   ElevatedButton(
                     onPressed: _isRunning ? _pauseStopwatch : _startStopwatch,
                     style: ElevatedButton.styleFrom(
@@ -237,7 +234,6 @@ class _StopwatchScreenState extends State<StopwatchScreen> {
                   ),
                 ],
               ),
-
               const SizedBox(height: 100),
             ],
           ),

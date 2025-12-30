@@ -18,6 +18,8 @@ dependencies:
   webview_flutter: ^4.9.0
   intl: ^0.19.0
   timezone: ^0.9.2
+  shared_preferences: ^2.3.0
+
   # Paquetes recomendados para un despertador real (puedes agregarlos después)
   # alarm: ^3.2.0
   # just_audio: ^0.9.39

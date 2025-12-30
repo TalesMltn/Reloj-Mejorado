@@ -1,10 +1,14 @@
 // lib/screens/world_clock_screen.dart
 import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
-import 'package:intl/intl.dart';  // ← ESTA ES LA LÍNEA QUE FALTABA
+import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../widgets/bubble_animation.dart';
 
 class WorldClockScreen extends StatefulWidget {
@@ -14,7 +18,12 @@ class WorldClockScreen extends StatefulWidget {
   State<WorldClockScreen> createState() => _WorldClockScreenState();
 }
 
-class _WorldClockScreenState extends State<WorldClockScreen> {
+class _WorldClockScreenState extends State<WorldClockScreen>
+    with AutomaticKeepAliveClientMixin {
+
+  @override
+  bool get wantKeepAlive => true;  // ← Mantiene viva la pantalla
+
   VideoPlayerController? _videoController;
 
   final List<String> _localFondos = [
@@ -36,6 +45,8 @@ class _WorldClockScreenState extends State<WorldClockScreen> {
     {'name': 'Lima', 'zone': 'America/Lima'},
   ];
 
+  late SharedPreferences _prefs;
+
   Timer? _timer;
   String _mainTime = '';
   String _mainPeriod = '';
@@ -47,22 +58,52 @@ class _WorldClockScreenState extends State<WorldClockScreen> {
     _allZones = tz.timeZoneDatabase.locations.keys.toList()..sort();
 
     _loadBackground(_currentFondoIndex);
+    _loadCitiesFromPreferences();
     _updateMainTime();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateMainTime());
+  }
+
+  // Cargar ciudades guardadas
+  Future<void> _loadCitiesFromPreferences() async {
+    _prefs = await SharedPreferences.getInstance();
+    final String? citiesJson = _prefs.getString('added_cities');
+
+    if (citiesJson != null && citiesJson.isNotEmpty) {
+      final List<dynamic> decoded = jsonDecode(citiesJson);
+      setState(() {
+        _addedCities = decoded.map((e) => {
+          'name': e['name'] as String,
+          'zone': e['zone'] as String,
+        }).toList();
+      });
+    }
+    // Si por algún motivo está vacío, aseguramos tener al menos Lima
+    if (_addedCities.isEmpty) {
+      _addedCities = [{'name': 'Lima', 'zone': 'America/Lima'}];
+      await _saveCitiesToPreferences();
+    }
+  }
+
+  // Guardar ciudades cada vez que cambien
+  Future<void> _saveCitiesToPreferences() async {
+    final String citiesJson = jsonEncode(_addedCities);
+    await _prefs.setString('added_cities', citiesJson);
   }
 
   void _loadBackground(int index) {
     _videoController?.dispose();
     _videoController = VideoPlayerController.asset(_localFondos[index])
       ..initialize().then((_) {
+        if (!mounted) return;
         _videoController!.play();
         _videoController!.setLooping(true);
         _videoController!.setVolume(0);
-        if (mounted) setState(() {});
+        setState(() {});
       });
   }
 
   void _updateMainTime() {
+    if (_addedCities.isEmpty) return;
     final location = tz.getLocation(_addedCities.first['zone']!);
     final now = tz.TZDateTime.now(location);
 
@@ -148,7 +189,7 @@ class _WorldClockScreenState extends State<WorldClockScreen> {
                               color: alreadyAdded ? Colors.redAccent : Colors.cyanAccent,
                               size: 30,
                             ),
-                            onTap: () {
+                            onTap: () async {
                               setState(() {
                                 if (alreadyAdded) {
                                   _addedCities.removeWhere((c) => c['zone'] == zone);
@@ -156,6 +197,7 @@ class _WorldClockScreenState extends State<WorldClockScreen> {
                                   _addedCities.add({'name': name, 'zone': zone});
                                 }
                               });
+                              await _saveCitiesToPreferences();  // Guardar inmediatamente
                               setModalState(() {});
                             },
                           );
@@ -181,6 +223,8 @@ class _WorldClockScreenState extends State<WorldClockScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);  // ← REQUERIDO por KeepAlive
+
     return Stack(
       children: [
         Container(color: Colors.black),
@@ -197,7 +241,6 @@ class _WorldClockScreenState extends State<WorldClockScreen> {
           ),
         Container(color: Colors.black.withOpacity(0.6)),
         ...List.generate(120, (_) => const BubbleAnimation()),
-
         SafeArea(
           child: Column(
             children: [
@@ -223,15 +266,13 @@ class _WorldClockScreenState extends State<WorldClockScreen> {
                       style: const TextStyle(fontSize: 40, color: Colors.cyanAccent, fontWeight: FontWeight.w300),
                     ),
                     Text(
-                      'hora estándar de ${_addedCities.first['name']}',
+                      'hora estándar de ${_addedCities.isNotEmpty ? _addedCities.first['name'] : 'Lima'}',
                       style: const TextStyle(fontSize: 18, color: Colors.white70),
                     ),
                   ],
                 ),
               ),
-
               const SizedBox(height: 30),
-
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -242,9 +283,7 @@ class _WorldClockScreenState extends State<WorldClockScreen> {
                   const SizedBox(width: 20),
                 ],
               ),
-
               const SizedBox(height: 10),
-
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -277,10 +316,11 @@ class _WorldClockScreenState extends State<WorldClockScreen> {
                               const SizedBox(width: 10),
                               IconButton(
                                 icon: const Icon(Icons.remove_circle, color: Colors.redAccent, size: 30),
-                                onPressed: () {
+                                onPressed: () async {
                                   setState(() {
                                     _addedCities.removeAt(index);
                                   });
+                                  await _saveCitiesToPreferences();  // Guardar al eliminar
                                 },
                               ),
                             ],

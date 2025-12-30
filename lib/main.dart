@@ -1,8 +1,7 @@
 // lib/main.dart
-
 import 'package:flutter/material.dart';
-import 'package:intl/date_symbol_data_local.dart'; // Para initializeDateFormatting
-import 'package:timezone/data/latest.dart' as tz; // Para initializeTimeZones
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:timezone/data/latest.dart' as tz;
 
 import 'screens/alarm_screen.dart';
 import 'screens/world_clock_screen.dart';
@@ -12,10 +11,10 @@ import 'screens/timer_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inicializa los datos de formato de fecha para español (evita el LocaleDataException)
+  // Inicializa formato de fecha en español
   await initializeDateFormatting('es_ES');
 
-  // Inicializa la base de datos de zonas horarias IANA (para timezone package)
+  // Inicializa zonas horarias
   tz.initializeTimeZones();
 
   runApp(const MyApp());
@@ -45,31 +44,22 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  final PageController _pageController = PageController();
-  int _currentIndex = 0;
+  int _currentIndex = 1; // Empieza en Reloj Mundial (índice 1)
 
-  void _onTabTapped(int index) {
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
-  }
+  // Lista de pantallas (se crean una sola vez)
+  static const List<Widget> _screens = [
+    AlarmScreen(),
+    WorldClockScreen(),
+    StopwatchScreen(),
+    TimerScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) {
-          setState(() => _currentIndex = index);
-        },
-        children: const [
-          AlarmScreen(),
-          WorldClockScreen(),
-          StopwatchScreen(),
-          TimerScreen(),
-        ],
+      body: IndexedStack(  // ← CAMBIO CLAVE: IndexedStack en vez de PageView
+        index: _currentIndex,
+        children: _screens,
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -78,11 +68,15 @@ class _MainScreenState extends State<MainScreen> {
         ),
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
-          onTap: _onTabTapped,
+          onTap: (index) {
+            setState(() => _currentIndex = index);
+          },
           backgroundColor: Colors.transparent,
           selectedItemColor: Colors.cyanAccent,
           unselectedItemColor: Colors.grey,
           type: BottomNavigationBarType.fixed,
+          selectedFontSize: 12,
+          unselectedFontSize: 11,
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.alarm), label: 'Alarma'),
             BottomNavigationBarItem(icon: Icon(Icons.language), label: 'Reloj Mundial'),
