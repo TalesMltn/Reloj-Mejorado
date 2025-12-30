@@ -44,3 +44,4 @@ flutter:
     - assets/html/index.html
     - assets/videos/          # Incluye todos los videos: fox_autumn_1.mp4 a fox_autumn_7.mp4
     - assets/images/          # ← Aquí van bnita1.jpg, bnita2.jpg y bnita3.jpg
+    - assets/sounds/
