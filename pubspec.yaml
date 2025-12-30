@@ -1,0 +1,46 @@
+name: despertador_nautico
+description: "Un hermoso despertador náutico con fondos de video personalizados 🦊🍂"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Fondo de video
+  video_player: ^2.8.7
+  chewie: ^1.7.5
+
+  # Para efectos avanzados con HTML (si lo usas para burbujas o partículas)
+  webview_flutter: ^4.9.0
+  intl: ^0.19.0
+  timezone: ^0.9.2
+  # Paquetes recomendados para un despertador real (puedes agregarlos después)
+  # alarm: ^3.2.0
+  # just_audio: ^0.9.39
+  # flutter_local_notifications: ^17.2.3
+  # shared_preferences: ^2.3.2
+  # permission_handler: ^11.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Assets: HTML y TODA la carpeta videos con tus nombres originales
+  assets:
+    - assets/html/index.html
+    - assets/videos/   # ← Esto incluye automáticamente:
+      # 🦊🍂1.mp4
+      # 🦊🍂2.mp4
+      # 🦊🍂3.mp4
+      # 🦊🍂4.mp4
+      # 🦊🍂5.mp4
+    # 🦊🍂6.mp4
+    # 🦊🍂7.mp4
