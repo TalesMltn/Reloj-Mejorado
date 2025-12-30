@@ -1,9 +1,14 @@
 // lib/screens/timer_screen.dart
+
 import 'dart:async';
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:intl/intl.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz_data;
+
 import '../widgets/bubble_animation.dart';
 
 class TimerScreen extends StatefulWidget {
@@ -41,9 +46,15 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
   late AnimationController _circleController;
   late Animation<double> _circleAnimation;
 
+  // Zona horaria fija de Lima (Perú)
+  static const String _limaZone = 'America/Lima';
+
   @override
   void initState() {
     super.initState();
+
+    // Inicializamos la base de datos de zonas horarias (igual que en WorldClockScreen)
+    tz_data.initializeTimeZones();
 
     _loadBackground(_currentFondoIndex);
 
@@ -106,6 +117,7 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
     _timer?.cancel();
     _circleController.stop();
     _circleController.reset();
+
     setState(() {
       _isRunning = false;
       _remaining = Duration.zero;
@@ -134,27 +146,36 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
     });
   }
 
-  /// Hora actual en Lima (Perú) - Siempre UTC-5 (no tiene horario de verano)
-  DateTime get _nowInLima => DateTime.now().toUtc().subtract(const Duration(hours: 5));
+  /// Hora actual en Lima usando la misma lógica que WorldClockScreen
+  DateTime get _nowInLima {
+    final location = tz.getLocation(_limaZone);
+    return tz.TZDateTime.now(location);
+  }
 
+  /// Calcula y formatea la hora de finalización del temporizador
   String _getEndTimeText() {
     if (_remaining.inSeconds == 0) {
       return 'Configura el tiempo';
     }
 
     final DateTime endTime = _nowInLima.add(_remaining);
-
     return 'Termina a las ${DateFormat('h:mm a', 'es_ES').format(endTime).toLowerCase()}';
   }
 
   Future<void> _showNumberPicker(String type) async {
-    int initial = type == 'hours' ? _hours : type == 'minutes' ? _minutes : _seconds;
+    int initial = type == 'hours'
+        ? _hours
+        : type == 'minutes'
+        ? _minutes
+        : _seconds;
     int max = type == 'hours' ? 99 : 59;
 
     final result = await showModalBottomSheet<int>(
       context: context,
       backgroundColor: Colors.black87,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
       builder: (_) => NumberPickerSheet(initial: initial, max: max, title: type),
     );
 
@@ -190,7 +211,6 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
     return Stack(
       children: [
         Container(color: Colors.black),
-
         if (_videoController != null && _videoController!.value.isInitialized)
           SizedBox.expand(
             child: FittedBox(
@@ -202,11 +222,8 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
               ),
             ),
           ),
-
         Container(color: Colors.black.withOpacity(0.55)),
-
         ...List.generate(100, (_) => const BubbleAnimation()),
-
         SafeArea(
           child: Column(
             children: [
@@ -224,18 +241,30 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    GestureDetector(onTap: () => _showNumberPicker('hours'), child: Text(_hours.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 78, color: Colors.white70))),
+                    GestureDetector(
+                        onTap: () => _showNumberPicker('hours'),
+                        child: Text(_hours.toString().padLeft(2, '0'),
+                            style: const TextStyle(fontSize: 78, color: Colors.white70))),
                     const Text(':', style: TextStyle(fontSize: 78, color: Colors.white70)),
-                    GestureDetector(onTap: () => _showNumberPicker('minutes'), child: Text(_minutes.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 78, color: Colors.white70))),
+                    GestureDetector(
+                        onTap: () => _showNumberPicker('minutes'),
+                        child: Text(_minutes.toString().padLeft(2, '0'),
+                            style: const TextStyle(fontSize: 78, color: Colors.white70))),
                     const Text(':', style: TextStyle(fontSize: 78, color: Colors.white70)),
-                    GestureDetector(onTap: () => _showNumberPicker('seconds'), child: Text(_seconds.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 78, color: Colors.white70))),
+                    GestureDetector(
+                        onTap: () => _showNumberPicker('seconds'),
+                        child: Text(_seconds.toString().padLeft(2, '0'),
+                            style: const TextStyle(fontSize: 78, color: Colors.white70))),
                   ],
                 ),
                 const Spacer(),
                 Container(
                   width: 180,
                   height: 180,
-                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), shape: BoxShape.circle, border: Border.all(color: Colors.white24, width: 2)),
+                  decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white24, width: 2)),
                   child: Center(
                     child: Text(
                       _formatTime(_remaining),
@@ -254,7 +283,8 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                     elevation: 20,
                     shadowColor: Colors.cyanAccent.withOpacity(0.8),
                   ),
-                  child: const Text('Iniciar', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+                  child: const Text('Iniciar',
+                      style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(height: 70),
               ] else ...[
@@ -297,7 +327,8 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                               const SizedBox(width: 12),
                               Text(
                                 _getEndTimeText(),
-                                style: const TextStyle(fontSize: 24, color: Colors.cyanAccent, fontWeight: FontWeight.w500),
+                                style: const TextStyle(
+                                    fontSize: 24, color: Colors.cyanAccent, fontWeight: FontWeight.w500),
                               ),
                             ],
                           ),
@@ -323,7 +354,8 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
                               borderRadius: BorderRadius.horizontal(left: Radius.circular(50)),
                             ),
                           ),
-                          child: const Text('Cancelar', style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold)),
+                          child: const Text('Cancelar',
+                              style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold)),
                         ),
                       ),
                       Expanded(
@@ -360,6 +392,7 @@ class _TimerScreenState extends State<TimerScreen> with TickerProviderStateMixin
 
 class CircleProgressPainter extends CustomPainter {
   final double progress;
+
   CircleProgressPainter({required this.progress});
 
   @override
@@ -375,7 +408,8 @@ class CircleProgressPainter extends CustomPainter {
     canvas.drawCircle(center, radius, bgPaint);
 
     final progressPaint = Paint()
-      ..shader = const LinearGradient(colors: [Colors.amber, Colors.yellowAccent]).createShader(Rect.fromCircle(center: center, radius: radius))
+      ..shader = const LinearGradient(colors: [Colors.amber, Colors.yellowAccent])
+          .createShader(Rect.fromCircle(center: center, radius: radius))
       ..strokeWidth = 24
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
@@ -397,6 +431,7 @@ class NumberPickerSheet extends StatefulWidget {
   final int initial;
   final int max;
   final String title;
+
   const NumberPickerSheet({required this.initial, required this.max, required this.title, super.key});
 
   @override
@@ -453,8 +488,12 @@ class _NumberPickerSheetState extends State<NumberPickerSheet> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar', style: TextStyle(color: Colors.orange, fontSize: 18))),
-                TextButton(onPressed: () => Navigator.pop(context, _current), child: const Text('Aceptar', style: TextStyle(color: Colors.cyanAccent, fontSize: 18))),
+                TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancelar', style: TextStyle(color: Colors.orange, fontSize: 18))),
+                TextButton(
+                    onPressed: () => Navigator.pop(context, _current),
+                    child: const Text('Aceptar', style: TextStyle(color: Colors.cyanAccent, fontSize: 18))),
               ],
             ),
           ),

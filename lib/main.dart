@@ -1,12 +1,23 @@
 // lib/main.dart
+
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart'; // Para initializeDateFormatting
+import 'package:timezone/data/latest.dart' as tz; // Para initializeTimeZones
 
 import 'screens/alarm_screen.dart';
 import 'screens/world_clock_screen.dart';
 import 'screens/stopwatch_screen.dart';
 import 'screens/timer_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Inicializa los datos de formato de fecha para español (evita el LocaleDataException)
+  await initializeDateFormatting('es_ES');
+
+  // Inicializa la base de datos de zonas horarias IANA (para timezone package)
+  tz.initializeTimeZones();
+
   runApp(const MyApp());
 }
 
